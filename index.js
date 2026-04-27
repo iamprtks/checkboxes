@@ -2,6 +2,7 @@ import http from "node:http"
 import path from "node:path";
 
 import express from "express";
+//pnpm install socket.io
 import { Server } from "socket.io";
 
 async function main(){
@@ -16,6 +17,10 @@ async function main(){
     //socket IO Handler
     io.on('connection',(socket)=>{
         console.log(`Socket connected`,{id:socket.id})
+
+        socket.on('client:checkbox:change',(data)=>{
+            console.log(`[Socket:${socket.id}:client:checkbox:change]`,data)
+        });
     })
     //express
     app.use(express.static(path.resolve('./public')));

@@ -145,12 +145,20 @@
     </main>
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        const socket = io();
         const container = document.getElementById("container");
         const CHECKBOX_COUNT=100;
 
         new Array(CHECKBOX_COUNT).fill(null).forEach((_, index) => {
             const input = document.createElement('input')
             input.type = 'checkbox';
+
+            input.addEventListener('change',()=>{
+                const checked = event.target.checked;
+                console.log('Checkbox changed',{ index, checked });
+                socket.emit('client:checkbox:change',{ index, checked})
+            })
+
             container.appendChild(input)
         })
     </script>
