@@ -7,11 +7,12 @@ import { Server } from "socket.io";
 import { publisher, subscriber, redis } from './redis-connection.js'
 
 const CHECKBOX_SIZE = 100;
-const CHECKBOX_STATE_KEY = 'checkbox-state'
+const CHECKBOX_STATE_KEY = 'checkbox-state-v1'
 
-const state = {
-    checkboxes: new Array(CHECKBOX_SIZE).fill(false)
-}
+// const state = {
+//     checkboxes: new Array(CHECKBOX_SIZE).fill(false)
+// }
+const rateLimitingHashMap = new Map();
 
 async function main(){
     const PORT = process.env.PORT ?? 8000;
@@ -26,7 +27,7 @@ async function main(){
     subscriber.on('message', (channel, message)=>{
         if(channel === 'internal-server:checkbox:change'){
             const { index, checked} = JSON.parse(message);
-            state.checkboxes[index]=checked;
+            //state.checkboxes[index]=checked;
             io.emit('server:checkbox:change', { index, checked })
         }
     })
@@ -39,6 +40,16 @@ async function main(){
             console.log(`[Socket:${socket.id}]:client:checkbox:change`,data);
             //io.emit('server:checkbox:change',data) // broadcast to all clients
             //state.checkboxes[data.index]= data.checked;
+            const lastOperationtime = await redis.get(`rate-limiting: ${socket.id}`)
+            if(lastOperationtime){
+                const timeElapsed = Date.now()- Number(lastOperationtime);
+                if(timeElapsed < 5.5*1000){
+                    socket.emit('server:error',{ error: `please wait`})
+                    return ;
+                }
+            }
+            await redis.set(`rate-limiting: ${socket.id}`, Date.now());
+            
             const existingState = await redis.get(CHECKBOX_STATE_KEY);
 
             if(existingState){
