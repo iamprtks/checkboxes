@@ -1,3 +1,4 @@
+//docker compose up -d
 import http from "node:http"
 import path from "node:path";
 
@@ -12,7 +13,7 @@ const CHECKBOX_STATE_KEY = 'checkbox-state-v1'
 // const state = {
 //     checkboxes: new Array(CHECKBOX_SIZE).fill(false)
 // }
-const rateLimitingHashMap = new Map();
+//const rateLimitingHashMap = new Map();
 
 async function main(){
     const PORT = process.env.PORT ?? 8000;
@@ -40,7 +41,7 @@ async function main(){
             console.log(`[Socket:${socket.id}]:client:checkbox:change`,data);
             //io.emit('server:checkbox:change',data) // broadcast to all clients
             //state.checkboxes[data.index]= data.checked;
-            const lastOperationtime = await redis.get(`rate-limiting: ${socket.id}`)
+            const lastOperationtime = await redis.get(`rate-limiting:${socket.id}`)
             if(lastOperationtime){
                 const timeElapsed = Date.now()- Number(lastOperationtime);
                 if(timeElapsed < 5.5*1000){
@@ -48,7 +49,7 @@ async function main(){
                     return ;
                 }
             }
-            await redis.set(`rate-limiting: ${socket.id}`, Date.now());
+            await redis.set(`rate-limiting:${socket.id}`, Date.now());
             
             const existingState = await redis.get(CHECKBOX_STATE_KEY);
 
@@ -58,9 +59,11 @@ async function main(){
                 await redis.set(CHECKBOX_STATE_KEY, JSON.stringify(remoteData));
             }
             else{
+                const newState = new Array(CHECKBOX_SIZE).fill(false);
+                newState[data.index] = data.checked;
                 await redis.set(
                     CHECKBOX_STATE_KEY,
-                    JSON.stringify(new Array(CHECKBOX_SIZE).fill(false)),
+                    JSON.stringify(newState),
                 );
             }
 
